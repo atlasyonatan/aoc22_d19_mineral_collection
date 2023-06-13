@@ -1,4 +1,5 @@
 use std::{
+    clone,
     fs::File,
     io::{self, BufRead},
     path::Path,
@@ -6,7 +7,6 @@ use std::{
 
 pub mod blueprint;
 use blueprint::parse::Blueprint;
-
 
 fn main() {
     let file_path = "../input.txt";
@@ -17,9 +17,14 @@ fn main() {
         .map(Result::unwrap)
         .map(|s| s.parse::<Blueprint>())
         .map(Result::unwrap);
-        
-    println!("{:?}", blueprints);
 
+    println!("{:?}", blueprints);
 }
 
-
+#[derive(Debug, Clone, Copy)]
+enum Material {
+    ore,
+    clay,
+    obsidian,
+    geode,
+}

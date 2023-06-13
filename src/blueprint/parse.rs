@@ -1,13 +1,12 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::num::ParseIntError;
-use std::str::FromStr;
+use std::{hash::Hash, num::ParseIntError, str::FromStr};
 use thiserror::Error;
 
-pub type Blueprint = super::Blueprint<String, Vec<(usize, String)>>;
+pub type Blueprint<Material> = super::Blueprint<Material, Vec<(usize, Material)>>;
 
-impl FromStr for Blueprint {
-    type Err = ParseError;
+impl<Material: Eq + Hash + FromStr> FromStr for Blueprint<Material> {
+    type Err = ParseError<Material::Err>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         lazy_static! {
@@ -19,7 +18,12 @@ impl FromStr for Blueprint {
             catalogue: BLUEPRINT_REG
                 .captures_iter(s)
                 .map(|caps| {
-                    let robot_kind = caps.get(1).ok_or(MissingCaptureError)?.as_str().to_string();
+                    let robot_kind = caps
+                        .get(1)
+                        .ok_or(MissingCaptureError)?
+                        .as_str()
+                        .parse::<Material>()
+                        .map_err(|err| Self::Err::MaterialParseError(err))?;
                     let robot_costs = caps.get(2).ok_or(MissingCaptureError)?.as_str();
                     let robot_costs = COSTS_REG
                         .captures_iter(robot_costs)
@@ -29,8 +33,12 @@ impl FromStr for Blueprint {
                                 .ok_or(MissingCaptureError)?
                                 .as_str()
                                 .parse::<usize>()?;
-                            let material =
-                                caps.get(2).ok_or(MissingCaptureError)?.as_str().to_string();
+                            let material = caps
+                                .get(2)
+                                .ok_or(MissingCaptureError)?
+                                .as_str()
+                                .parse::<Material>()
+                                .map_err(|err| Self::Err::MaterialParseError(err))?;
                             Ok((amount, material))
                         })
                         .collect::<Result<Vec<_>, Self::Err>>()?;
@@ -46,9 +54,11 @@ impl FromStr for Blueprint {
 pub struct MissingCaptureError;
 
 #[derive(Error, Debug)]
-pub enum ParseError {
+pub enum ParseError<MaterialParseError> {
     #[error("{0}")]
     AmountParseError(#[from] ParseIntError),
-    #[error("{0:?}")]
+    #[error("{0}")]
     MissingCaptureError(#[from] MissingCaptureError),
+    #[error("{0}")]
+    MaterialParseError(MaterialParseError),
 }
