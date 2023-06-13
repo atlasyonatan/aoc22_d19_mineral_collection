@@ -1,12 +1,16 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{hash::Hash, num::ParseIntError, str::FromStr};
+use std::{hash::Hash, str::FromStr};
 use thiserror::Error;
 
-pub type Blueprint<Material> = super::Blueprint<Material, Vec<(usize, Material)>>;
+pub type Blueprint<Material, Amount> = super::Blueprint<Material, Vec<(Amount, Material)>>;
 
-impl<Material: Eq + Hash + FromStr> FromStr for Blueprint<Material> {
-    type Err = ParseError<Material::Err>;
+impl<Material, Amount> FromStr for Blueprint<Material, Amount>
+where
+    Material: Eq + Hash + FromStr,
+    Amount: FromStr,
+{
+    type Err = ParseError<Material::Err, Amount::Err>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         lazy_static! {
@@ -14,7 +18,7 @@ impl<Material: Eq + Hash + FromStr> FromStr for Blueprint<Material> {
                 Regex::new(r"Each (\w+) robot costs (.*?)\.").unwrap();
             static ref COSTS_REG: Regex = Regex::new(r"(\d+) (\w+)").unwrap();
         }
-        Ok(Blueprint {
+        Ok(Self {
             catalogue: BLUEPRINT_REG
                 .captures_iter(s)
                 .map(|caps| {
@@ -32,7 +36,8 @@ impl<Material: Eq + Hash + FromStr> FromStr for Blueprint<Material> {
                                 .get(1)
                                 .ok_or(MissingCaptureError)?
                                 .as_str()
-                                .parse::<usize>()?;
+                                .parse::<Amount>()
+                                .map_err(|err| Self::Err::AmountParseError(err))?;
                             let material = caps
                                 .get(2)
                                 .ok_or(MissingCaptureError)?
@@ -54,9 +59,9 @@ impl<Material: Eq + Hash + FromStr> FromStr for Blueprint<Material> {
 pub struct MissingCaptureError;
 
 #[derive(Error, Debug)]
-pub enum ParseError<MaterialParseError> {
+pub enum ParseError<MaterialParseError, AmountParseError> {
     #[error("{0}")]
-    AmountParseError(#[from] ParseIntError),
+    AmountParseError(AmountParseError),
     #[error("{0}")]
     MissingCaptureError(#[from] MissingCaptureError),
     #[error("{0}")]

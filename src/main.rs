@@ -1,5 +1,4 @@
 use std::{
-    clone,
     fs::File,
     io::{self, BufRead},
     path::Path,
@@ -15,16 +14,21 @@ fn main() {
     let blueprints = io::BufReader::new(file)
         .lines()
         .map(Result::unwrap)
-        .map(|s| s.parse::<Blueprint>())
-        .map(Result::unwrap);
+        .map(|s| s.parse::<Blueprint<Material, usize>>())
+        .map(Result::unwrap)
+        .collect::<Vec<_>>();
 
     println!("{:?}", blueprints);
 }
 
-#[derive(Debug, Clone, Copy)]
+extern crate strum;
+#[macro_use]
+extern crate strum_macros;
+#[derive(EnumString, Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[strum(serialize_all = "lowercase")]
 enum Material {
-    ore,
-    clay,
-    obsidian,
-    geode,
+    Ore,
+    Clay,
+    Obsidian,
+    Geode,
 }
