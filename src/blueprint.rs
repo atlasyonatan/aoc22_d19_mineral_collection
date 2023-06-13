@@ -5,7 +5,7 @@ use std::{collections::HashMap, hash::Hash, str::FromStr};
 use thiserror::Error;
 
 #[derive(Debug, Serialize)]
-pub struct Blueprint<Kind, Cost>(HashMap<Kind, Cost>);
+pub struct Blueprint<Kind, Cost>(pub HashMap<Kind, Cost>);
 
 #[derive(Error, Debug)]
 pub enum ParseError<MaterialParseError, AmountParseError> {
