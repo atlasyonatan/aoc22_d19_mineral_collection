@@ -1,10 +1,9 @@
 pub mod error;
 use crate::{
     blueprint::MaterialBlueprint,
-    material::Material,
     simulation::error::{InstcurionError, InsufficientMaterialError, SimulationError},
 };
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
 #[derive(Debug)]
 pub struct State<Material, Amount>
@@ -15,12 +14,13 @@ where
     pub active_robots: HashMap<Material, Amount>,
 }
 
-pub fn simulate<F>(
+pub fn simulate<Material, F>(
     blueprint: &MaterialBlueprint<Material, usize>,
     time: usize,
     get_instruction: F,
 ) -> Result<State<Material, usize>, SimulationError<Material, usize>>
 where
+    Material: Hash + Eq + Clone + Copy + Debug,
     F: Fn(&MaterialBlueprint<Material, usize>, &State<Material, usize>) -> Option<Material>,
 {
     let map = HashMap::from_iter(blueprint.0.keys().map(|&material| (material, 0)));
