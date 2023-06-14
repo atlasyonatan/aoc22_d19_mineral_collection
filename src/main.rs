@@ -1,7 +1,6 @@
 pub mod blueprint;
 pub mod material;
 pub mod simulation;
-use simulation::State;
 
 use crate::{blueprint::MaterialBlueprint, material::Material, simulation::simulate};
 use std::{
@@ -26,7 +25,7 @@ fn main() -> ExitCode {
             index + 1,
             serde_json::to_string(&blueprint).unwrap()
         );
-        let result = simulate(&blueprint, 24, find_best_instruction);
+        let result = simulate(&blueprint, 24, |state| Some(Material::Geode));
         if let Err(error) = result {
             eprintln!("{}", error);
             return ExitCode::FAILURE;
@@ -37,9 +36,8 @@ fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn find_best_instruction(
-    blueprint: &MaterialBlueprint<Material, usize>,
-    state: &State<Material, usize>,
-) -> Option<Material> {
-    Some(Material::Geode)
-}
+// fn find_best_instruction(
+//     state: &State<Material, usize>,
+// ) -> Option<Material> {
+
+// }

@@ -21,7 +21,7 @@ pub fn simulate<Material, F>(
 ) -> Result<State<Material, usize>, SimulationError<Material, usize>>
 where
     Material: Hash + Eq + Clone + Copy + Debug,
-    F: Fn(&MaterialBlueprint<Material, usize>, &State<Material, usize>) -> Option<Material>,
+    F: Fn(&State<Material, usize>) -> Option<Material>,
 {
     let map = HashMap::from_iter(blueprint.0.keys().map(|&material| (material, 0)));
     let mut state = State {
@@ -30,7 +30,7 @@ where
     };
     for _ in 0..time {
         //create robot
-        let instruction = get_instruction(blueprint, &state);
+        let instruction = get_instruction(&state);
         if let Some(instruction_material) = &instruction {
             let recipie = blueprint.0.get(instruction_material).unwrap();
             let (leftovers, errors) = recipie
