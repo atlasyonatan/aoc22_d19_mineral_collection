@@ -1,17 +1,17 @@
 pub mod blueprint;
 pub mod material;
+pub mod simulation;
+use simulation::State;
 
-use blueprint::MaterialBlueprint;
-use material::Material;
+use crate::{blueprint::MaterialBlueprint, material::Material, simulation::simulate};
 use std::{
-    collections::HashMap,
     fs::File,
     io::{self, BufRead},
     path::Path,
+    process::ExitCode,
 };
-use strum::IntoEnumIterator;
 
-fn main() {
+fn main() -> ExitCode {
     let file_path = "../input.txt";
     let path = Path::new(file_path);
     let file = File::open(path).unwrap();
@@ -19,40 +19,27 @@ fn main() {
         .lines()
         .map(Result::unwrap)
         .map(|s| s.parse::<MaterialBlueprint<Material, usize>>())
-        .map(Result::unwrap)
-        .collect::<Vec<_>>();
-
-    println!("{}", serde_json::to_string(&blueprints).unwrap());
+        .map(Result::unwrap);
+    for (index, blueprint) in blueprints.enumerate() {
+        println!(
+            "Blueprint #{}: {}",
+            index + 1,
+            serde_json::to_string(&blueprint).unwrap()
+        );
+        let result = simulate(&blueprint, 24, find_best_instruction);
+        if let Err(error) = result {
+            eprintln!("{}", error);
+            return ExitCode::FAILURE;
+        }
+        let state = result.unwrap();
+        println!("{:?}", state);
+    }
+    ExitCode::SUCCESS
 }
 
-fn maximize_geodes(blueprint: &MaterialBlueprint<Material, usize>, mut time: usize) -> usize {
-    let mut collected = Material::iter()
-        .map(|material| (material, 0usize))
-        .collect::<HashMap<_, _>>();
-    let mut robots = Material::iter()
-        .map(|material| (material, 0usize))
-        .collect::<HashMap<_, _>>();
-
-    let best_move = || -> Option<Material> {
-        todo!()
-        // if blueprint.0.get(&Material::Geode).unwrap(){
-
-        // }
-    };
-    for minute in 0..time {
-        //create robots
-        match best_move() {
-            Some(material) => {
-                *robots.get_mut(&material).unwrap() += 1;
-                for (amount, material) in blueprint.0.get(&material).unwrap() {
-                    *collected.get_mut(material).unwrap() -= amount;
-                }
-            }
-            None => (),
-        }
-
-        //robots collect
-        for (&material, &amount) in robots.iter() {}
-    }
-    *collected.get(&Material::Geode).unwrap()
+fn find_best_instruction(
+    blueprint: &MaterialBlueprint<Material, usize>,
+    state: &State<Material, usize>,
+) -> Option<Material> {
+    Some(Material::Geode)
 }

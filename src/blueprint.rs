@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::{collections::HashMap, hash::Hash, str::FromStr};
 use thiserror::Error;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct Blueprint<Kind, Cost>(pub HashMap<Kind, Cost>);
 
 #[derive(Error, Debug)]
