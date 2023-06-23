@@ -2,15 +2,16 @@ pub mod blueprint;
 pub mod material;
 pub mod simulation;
 
-use crate::{blueprint::MaterialBlueprint, material::Material, simulation::simulate};
+use crate::{blueprint::MaterialBlueprint, material::Material, simulation::State};
+
 use std::{
+    collections::HashMap,
     fs::File,
     io::{self, BufRead},
     path::Path,
-    process::ExitCode,
 };
 
-fn main() -> ExitCode {
+fn main() -> () {
     let file_path = "../input.txt";
     let path = Path::new(file_path);
     let file = File::open(path).unwrap();
@@ -25,15 +26,15 @@ fn main() -> ExitCode {
             index + 1,
             serde_json::to_string(&blueprint).unwrap()
         );
-        let result = simulate(&blueprint, 24, |state| Some(Material::Geode));
-        if let Err(error) = result {
-            eprintln!("{}", error);
-            return ExitCode::FAILURE;
+        let mut state = State {
+            active_robots: HashMap::from_iter(vec![(Material::Ore, 1)]),
+            materials_collected: HashMap::new(),
+        };
+        for _ in 0..24 {
+            state.step(&blueprint, |options| options.last());
         }
-        let state = result.unwrap();
-        println!("{:?}", state);
+        println!("{:?}", &state)
     }
-    ExitCode::SUCCESS
 }
 
 // fn find_best_instruction(
