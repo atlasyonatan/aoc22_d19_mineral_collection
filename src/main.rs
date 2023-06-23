@@ -5,7 +5,7 @@ pub mod simulation;
 use crate::{blueprint::MaterialBlueprint, material::Material, simulation::State};
 
 use std::{
-    collections::HashMap,
+    collections::HashSet,
     fs::File,
     io::{self, BufRead},
     path::Path,
@@ -26,19 +26,33 @@ fn main() -> () {
             index + 1,
             serde_json::to_string(&blueprint).unwrap()
         );
-        let mut state = State {
-            active_robots: HashMap::from_iter(vec![(Material::Ore, 1)]),
-            materials_collected: HashMap::new(),
-        };
-        for _ in 0..24 {
-            state.step(&blueprint, |options| options.last());
+        let mut state = State::new();
+        state.robots.insert(Material::Ore, 1usize);
+
+        for time_left in (0..24).rev() {
+            state.step(&blueprint, |current_state, options| {
+                find_best_instruction(options, current_state, &blueprint, time_left)
+            });
         }
-        println!("{:?}", &state)
+        println!("{}", serde_json::to_string_pretty(&state).unwrap())
     }
 }
 
-// fn find_best_instruction(
-//     state: &State<Material, usize>,
-// ) -> Option<Material> {
-
-// }
+fn find_best_instruction<'a>(
+    options: impl Iterator<Item = &'a Material>,
+    state: &State<Material, usize>,
+    blueprint: &MaterialBlueprint<Material, usize>,
+    time_left: usize,
+) -> Option<&'a Material> {
+    let options = options.collect::<HashSet<_>>();
+    let priority = vec![
+        Material::Geode,
+        Material::Obsidian,
+        Material::Clay,
+        Material::Ore,
+    ];
+    priority
+        .into_iter()
+        .filter_map(|material| options.get(&material).map(|choise| *choise))
+        .next()
+}
