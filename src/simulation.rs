@@ -1,4 +1,3 @@
-pub mod error;
 use crate::blueprint::MaterialBlueprint;
 use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
