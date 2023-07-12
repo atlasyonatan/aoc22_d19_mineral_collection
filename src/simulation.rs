@@ -11,6 +11,21 @@ where
     pub robots: HashMap<Material, Amount>,
 }
 
+#[derive(Debug)]
+pub struct StepLog<Material, Amount> {
+    pub materials_collected: HashMap<Material, Amount>,
+    pub materials_spent: HashMap<Material, Amount>,
+}
+
+impl<Material: Hash + Eq> StepLog<Material, usize> {
+    pub fn new() -> Self {
+        Self {
+            materials_collected: HashMap::new(),
+            materials_spent: HashMap::new(),
+        }
+    }
+}
+
 impl<Material: Hash + Eq> State<Material, usize> {
     pub fn new() -> Self {
         Self {
@@ -23,6 +38,7 @@ impl<Material: Hash + Eq> State<Material, usize> {
         &mut self,
         blueprint: &MaterialBlueprint<Material, usize>,
         get_instruction: F,
+        log: &mut StepLog<Material, usize>,
     ) -> ()
     where
         Material: Hash + Eq + Clone + Copy + Debug,
@@ -32,15 +48,17 @@ impl<Material: Hash + Eq> State<Material, usize> {
         let instruction =
             get_instruction(&self, &mut self.available_options(&blueprint)).map(|choise| *choise);
         if let Some(instruction_material) = &instruction {
-            let recipie = blueprint.0.get(instruction_material).unwrap();
-            for (amount, material) in recipie {
-                *self.materials.get_mut(material).unwrap() -= amount
+            let recipe = blueprint.0.get(instruction_material).unwrap();
+            for (amount, material) in recipe {
+                *self.materials.get_mut(material).unwrap() -= amount;
+                *log.materials_spent.entry(*material).or_default() += amount;
             }
         }
 
         //robots collect
         for (material, amount) in self.robots.iter() {
             *self.materials.entry(*material).or_default() += amount;
+            *log.materials_collected.entry(*material).or_default() += amount;
         }
 
         //robot created
