@@ -46,9 +46,10 @@ impl<Material: Hash + Eq> State<Material, usize> {
     {
         //create robot
         let instruction =
-            get_instruction(&self, &mut self.available_options(&blueprint)).map(|choise| *choise);
-        if let Some(instruction_material) = &instruction {
-            let recipe = blueprint.0.get(instruction_material).unwrap();
+            get_instruction(&self, &mut self.available_crafts(&blueprint))
+            .map(|choice| *choice);
+        if let Some(instruction_material) = instruction {
+            let recipe = blueprint.0.get(&instruction_material).unwrap();
             for (amount, material) in recipe {
                 *self.materials.get_mut(material).unwrap() -= amount;
                 *log.materials_spent.entry(*material).or_default() += amount;
@@ -62,12 +63,12 @@ impl<Material: Hash + Eq> State<Material, usize> {
         }
 
         //robot created
-        if let Some(material) = &instruction {
-            *self.robots.entry(*material).or_default() += 1;
+        if let Some(material) = instruction {
+            *self.robots.entry(material).or_default() += 1;
         }
     }
 
-    pub fn available_options<'a>(
+    pub fn available_crafts<'a>(
         &'a self,
         blueprint: &'a MaterialBlueprint<Material, usize>,
     ) -> impl Iterator<Item = &'a Material> {
