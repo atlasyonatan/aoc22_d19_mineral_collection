@@ -11,7 +11,7 @@ use crate::{
 };
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     fs::File,
     io::{self, BufRead},
     path::Path,
@@ -33,7 +33,7 @@ fn main() -> () {
         Material::Obsidian,
         Material::Geode,
     ];
-    let mut qualitySum = 0;
+    let mut quality_sum = 0;
     for (index, blueprint) in blueprints.enumerate() {
         println!(
             "Blueprint #{}: {}",
@@ -55,44 +55,22 @@ fn main() -> () {
                     .map(|(amount, material)| (material, amount))
             })
             .into_grouping_map()
-            .max(); //.into_group_map::<&Material,&usize>().into_iter().map(|(material, amounts)| (material, amounts.into_iter().max())).collect();
-                    // let costs : HashMap<Material, usize> = {
-                    //     let mut map = HashMap::new();
-                    //     for &(amount, material) in blueprint.0.iter().flat_map(|recipie| recipie.1){
-                    //         *map.entry(material).or_insert(0usize) += amount;
-                    //     }
-                    //     map
-                    // };
+            .max();
 
-        // blueprint.0.iter().fo;
-        // let priority_goals = priority.iter().map(|robot_kind| (robot_kind, {
-        //     match max_costs.get(robot_kind){
-        //         Some(_) => todo!(),
-        //         None => todo!(),
-        //     }
-        // }));
-        let robot_amount_goals = max_costs;
+        let robot_amount_goals: HashMap<_, _> = max_costs
+            .into_iter()
+            .map(|(material, amount)| (material, ((*amount as f32).sqrt() as usize)))
+            .collect();
         println!("desired robots: {:?}", &robot_amount_goals);
 
-        // let mut priority_crafts = priority.clone();
-
         let mut log = StepLog::new();
-        for time_left in (0..total_time).rev() {
+        for _time_left in (0..total_time).rev() {
             state.step(
                 &blueprint,
                 |current_state, options| {
-                    // let desired_craft = priority_crafts.iter().next()?;
-                    // if let Some(current_amount) = current_state.robots.get(desired_craft){
-                    //     if let Some(&desired_amount) = robot_amount_goals.get(desired_craft){
-                    //         if current_amount == desired_amount{
-                    //             priority_crafts.pop();
-                    //         }
-                    //     }
-                    // }
-
                     let desired_craft = priority.iter().find_map(|robot_kind| {
                         match robot_amount_goals.get(robot_kind) {
-                            Some(&desired_amount) => match current_state.robots.get(robot_kind) {
+                            Some(desired_amount) => match current_state.robots.get(robot_kind) {
                                 Some(current_amount) => match current_amount.cmp(desired_amount) {
                                     std::cmp::Ordering::Less => Some(robot_kind),
                                     _ => None,
@@ -103,15 +81,15 @@ fn main() -> () {
                         }
                     })?;
 
-                    println!(
-                        "Minute {}\n\tdesired_craft: {:?}",
-                        total_time - time_left,
-                        desired_craft
-                    );
+                    // println!(
+                    //     "Minute {}\n\tdesired_craft: {:?}",
+                    //     total_time - time_left,
+                    //     desired_craft
+                    // );
 
                     let option = options.filter(|&option| option.eq(desired_craft)).next()?;
 
-                    println!("\tCrafted");
+                    // println!("\tCrafted");
 
                     Some(option)
                     //
@@ -126,54 +104,57 @@ fn main() -> () {
             //     &state.robots
             // );
         }
-        // println!("\nSimulation Results:");
-        println!("{}", serde_json::to_string_pretty(&state).unwrap());
-        // println!(
-        //     "\trobots made: (total: {}) {:?}",
-        //     &state
-        //         .robots
-        //         .iter()
-        //         .map(|(_, amount)| *amount)
-        //         .sum::<usize>(),
-        //     &state.robots
-        // );
-        // println!(
-        //     "\tmaterials left: (total: {}) {:?}",
-        //     &state
-        //         .materials
-        //         .iter()
-        //         .map(|(_, amount)| *amount)
-        //         .sum::<usize>(),
-        //     &state.materials
-        // );
-        // println!(
-        //     "\tmaterials collected: (total: {}) {:?}",
-        //     &log.materials_collected
-        //         .iter()
-        //         .map(|(_, amount)| *amount)
-        //         .sum::<usize>(),
-        //     &log.materials_collected
-        // );
-        // println!(
-        //     "\tmaterials spent: (total: {}) {:?}",
-        //     &log.materials_spent
-        //         .iter()
-        //         .map(|(_, amount)| *amount)
-        //         .sum::<usize>(),
-        //     &log.materials_spent
-        // );
-
-        if let Some(quality) = state.materials.get(&Material::Geode) {
-            qualitySum += quality;
-        }
+        // println!("{}", serde_json::to_string_pretty(&state).unwrap());
+        println!("\nSimulation Results:");
+        println!(
+            "\trobots made: (total: {}) {:?}",
+            &state
+                .robots
+                .iter()
+                .map(|(_, amount)| *amount)
+                .sum::<usize>(),
+            &state.robots
+        );
+        println!(
+            "\tmaterials left: (total: {}) {:?}",
+            &state
+                .materials
+                .iter()
+                .map(|(_, amount)| *amount)
+                .sum::<usize>(),
+            &state.materials
+        );
+        println!(
+            "\tmaterials collected: (total: {}) {:?}",
+            &log.materials_collected
+                .iter()
+                .map(|(_, amount)| *amount)
+                .sum::<usize>(),
+            &log.materials_collected
+        );
+        println!(
+            "\tmaterials spent: (total: {}) {:?}",
+            &log.materials_spent
+                .iter()
+                .map(|(_, amount)| *amount)
+                .sum::<usize>(),
+            &log.materials_spent
+        );
+        let quality = state
+            .materials
+            .get(&Material::Geode)
+            .map(|amount| *amount)
+            .unwrap_or_default();
+        quality_sum += quality;
+        println!("Quality: {}", quality);
 
         println!();
         break;
     }
 
-    println!("------------------\nQuality sum = {}", qualitySum);
+    println!("------------------\nQuality sum = {}", quality_sum);
 }
-
+/*
 fn strategy_priority_craft<'a>(
     options: impl Iterator<Item = &'a Material>,
     state: &State<Material, usize>,
@@ -290,3 +271,4 @@ fn estimate_robot(
             .min()?,
     )
 }
+*/
