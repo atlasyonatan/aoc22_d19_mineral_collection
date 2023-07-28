@@ -1,30 +1,27 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::Serialize;
-use std::{collections::HashMap, hash::Hash, str::FromStr};
+use std::str::FromStr;
 use thiserror::Error;
 
-#[derive(Debug, Serialize, Default)]
-pub struct Blueprint<Kind, Cost>(pub HashMap<Kind, Cost>);
+use crate::mineral::{Mineral, MineralArray};
+
+pub type Blueprint<Amount> = MineralArray<MineralArray<Amount>>;
 
 #[derive(Error, Debug)]
-pub enum ParseError<MaterialParseError, AmountParseError> {
+pub enum ParseError<MineralParseError, AmountParseError> {
     #[error("{0}")]
-    MaterialParseError(MaterialParseError),
+    MineralParseError(MineralParseError),
     #[error("{0}")]
     AmountParseError(AmountParseError),
     #[error("MissingCaptureError")]
     MissingCaptureError,
 }
 
-pub type MaterialBlueprint<Material, Amount> = Blueprint<Material, Vec<(Amount, Material)>>;
-
-impl<Material, Amount> FromStr for MaterialBlueprint<Material, Amount>
+impl<Amount> FromStr for Blueprint<Amount>
 where
-    Material: Eq + Hash + FromStr,
-    Amount: FromStr,
+    Amount: FromStr + Default,
 {
-    type Err = ParseError<Material::Err, Amount::Err>;
+    type Err = ParseError<<Mineral as FromStr>::Err, Amount::Err>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         lazy_static! {
@@ -32,38 +29,43 @@ where
                 Regex::new(r"Each (\w+) robot costs (.*?)\.").unwrap();
             static ref COSTS_REG: Regex = Regex::new(r"(\d+) (\w+)").unwrap();
         }
-        Ok(Self(
-            BLUEPRINT_REG
-                .captures_iter(s)
-                .map(|caps| {
-                    let robot_kind = caps
-                        .get(1)
-                        .ok_or(Self::Err::MissingCaptureError)?
-                        .as_str()
-                        .parse::<Material>()
-                        .map_err(|err| Self::Err::MaterialParseError(err))?;
-                    let robot_costs = caps.get(2).ok_or(Self::Err::MissingCaptureError)?.as_str();
-                    let robot_costs = COSTS_REG
-                        .captures_iter(robot_costs)
-                        .map(|caps| {
-                            let amount = caps
-                                .get(1)
-                                .ok_or(Self::Err::MissingCaptureError)?
-                                .as_str()
-                                .parse::<Amount>()
-                                .map_err(|err| Self::Err::AmountParseError(err))?;
-                            let material = caps
-                                .get(2)
-                                .ok_or(Self::Err::MissingCaptureError)?
-                                .as_str()
-                                .parse::<Material>()
-                                .map_err(|err| Self::Err::MaterialParseError(err))?;
-                            Ok((amount, material))
-                        })
-                        .collect::<Result<Vec<_>, _>>()?;
-                    Ok((robot_kind, robot_costs))
-                })
-                .collect::<Result<_, _>>()?,
-        ))
+        let mut blueprint = Self::default();
+        for caps in BLUEPRINT_REG.captures_iter(s) {
+            let robot_mineral = caps
+                .get(1)
+                .ok_or(Self::Err::MissingCaptureError)?
+                .as_str()
+                .parse::<Mineral>()
+                .map_err(|err| Self::Err::MineralParseError(err))?;
+            let robot_costs_str = caps.get(2).ok_or(Self::Err::MissingCaptureError)?.as_str();
+            let mut robot_costs = MineralArray::default();
+            for caps in COSTS_REG.captures_iter(robot_costs_str) {
+                let amount = caps
+                    .get(1)
+                    .ok_or(Self::Err::MissingCaptureError)?
+                    .as_str()
+                    .parse::<Amount>()
+                    .map_err(|err| Self::Err::AmountParseError(err))?;
+                let mineral = caps
+                    .get(2)
+                    .ok_or(Self::Err::MissingCaptureError)?
+                    .as_str()
+                    .parse::<Mineral>()
+                    .map_err(|err| Self::Err::MineralParseError(err))?;
+                robot_costs[mineral] = amount
+            }
+            blueprint[robot_mineral] = robot_costs
+        }
+        Ok(blueprint)
+    }
+}
+
+impl<Amount: PartialOrd> Blueprint<Amount> {
+    pub fn can_craft(&self, robot: Mineral, inventory: &MineralArray<Amount>) -> bool {
+        self[robot]
+            .0
+            .iter()
+            .zip(inventory.0.iter())
+            .all(|(required, current)| required <= current)
     }
 }
