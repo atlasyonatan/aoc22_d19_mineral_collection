@@ -1,9 +1,9 @@
 use std::ops::{Index, IndexMut};
 
 use strum::EnumCount;
-use strum_macros::{EnumCount, EnumString, EnumIter};
+use strum_macros::{EnumCount, EnumIter, EnumString};
 
-#[derive(Debug, Clone, Copy, EnumCount, EnumString, EnumIter)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, EnumCount, EnumString, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Mineral {
     Ore = 0,
@@ -35,10 +35,10 @@ impl<T> IndexMut<Mineral> for MineralArray<T> {
     }
 }
 
-impl<T: Default> FromIterator<(Mineral, T)> for MineralArray<T>{
+impl<T: Default> FromIterator<(Mineral, T)> for MineralArray<T> {
     fn from_iter<I: IntoIterator<Item = (Mineral, T)>>(iter: I) -> Self {
         let mut array = Self::default();
-        for (mineral, item) in iter.into_iter(){
+        for (mineral, item) in iter.into_iter() {
             array[mineral] = item;
         }
         array
