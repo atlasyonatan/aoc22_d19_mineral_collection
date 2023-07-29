@@ -1,6 +1,8 @@
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::str::FromStr;
+use strum::IntoEnumIterator;
 use thiserror::Error;
 
 use crate::mineral::{Mineral, MineralArray};
@@ -67,5 +69,17 @@ impl<Amount: PartialOrd> Blueprint<Amount> {
             .iter()
             .zip(inventory.0.iter())
             .all(|(required, current)| required <= current)
+    }
+}
+
+impl<Amount: Ord + Default + Copy> Blueprint<Amount> {
+    pub fn max_robots_needed(&self) -> MineralArray<Amount> {
+        Mineral::iter()
+            .map(|robot| &self[robot])
+            .flat_map(|recipie| Mineral::iter().map(|mineral| (mineral, recipie[mineral])))
+            .into_grouping_map()
+            .max()
+            .into_iter()
+            .collect()
     }
 }

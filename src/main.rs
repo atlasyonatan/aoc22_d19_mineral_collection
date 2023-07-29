@@ -2,19 +2,17 @@ pub mod blueprint;
 pub mod mineral;
 pub mod pack;
 
-use crate::blueprint::Blueprint;
-use crate::mineral::Mineral;
-use crate::pack::Pack;
-
-use itertools::Itertools;
-use mineral::MineralArray;
-use strum::IntoEnumIterator;
-
+use crate::{
+    blueprint::Blueprint,
+    mineral::{Mineral, MineralArray},
+    pack::Pack,
+};
 use std::{
     fs::File,
     io::{self, BufRead},
     path::Path,
 };
+use strum::IntoEnumIterator;
 
 fn main() -> () {
     let file_path = "../input.txt";
@@ -25,6 +23,10 @@ fn main() -> () {
         .map(Result::unwrap)
         .map(|s| s.parse::<Blueprint<usize>>())
         .map(Result::unwrap)
+        .map(|blueprint| {
+            let robots_needed = blueprint.max_robots_needed();
+            (blueprint, robots_needed)
+        })
         .collect::<Vec<_>>();
 
     let pack = {
@@ -37,67 +39,58 @@ fn main() -> () {
     let time = 24;
     let quality_sum = blueprints
         .iter()
-        .enumerate()
-        .map(|(index, blueprint)| {
-            (index + 1) * solve_max_mineral(goal, &blueprint, pack.clone(), time)
+        .map(|(blueprint, max_robots_needed)| {
+            max_mineral(
+                goal,
+                &blueprint,
+                max_robots_needed,
+                time,
+                pack.clone(),
+                &Default::default(),
+                0,
+            )
         })
+        .enumerate()
+        .map(|(index, max_goal)| (index + 1) * max_goal)
         .sum::<usize>();
     println!("Part 1: Quality sum = {}", quality_sum);
 
-    // let time = 32;
-    // let product = blueprints
-    //     .iter()
-    //     .take(3)
-    //     .map(|blueprint| {
-    //         let max = solve_max_mineral(goal, &blueprint, pack.clone(), time);
-    //         println!("max: {}\n\tblueprint: {:?}",&max, &blueprint);
-    //         max
-    //     })
-    //     .product::<usize>();
+    let time = 32;
+    let product = blueprints
+        .iter()
+        .take(3)
+        .map(|(blueprint, max_robots_needed)| {
+            max_mineral(
+                goal,
+                &blueprint,
+                max_robots_needed,
+                time,
+                pack.clone(),
+                &Default::default(),
+                0,
+            )
+        })
+        .product::<usize>();
 
-    // println!("Part 2: Product = {}", product);
-}
-
-fn solve_max_mineral(
-    goal: Mineral,
-    blueprint: &Blueprint<usize>,
-    pack: Pack<usize>,
-    time: usize,
-) -> usize {
-    let max = Mineral::iter()
-        .map(|robot| &blueprint[robot])
-        .flat_map(|recipie| Mineral::iter().map(|mineral| (mineral, recipie[mineral])))
-        .into_grouping_map()
-        .max()
-        .into_iter()
-        .collect::<MineralArray<_>>();
-
-    max_mineral(
-        goal,
-        blueprint,
-        pack,
-        time,
-        &MineralArray::default(),
-        &max,
-        0,
-    )
+    println!("Part 2: Product = {}", product);
 }
 
 fn max_mineral(
     goal: Mineral,
     blueprint: &Blueprint<usize>,
-    mut pack: Pack<usize>,
-    remaining_time: usize,
-    skip_crafts: &MineralArray<bool>,
     max_robots_needed: &MineralArray<usize>,
+    remaining_time: usize,
+    mut pack: Pack<usize>,
+    skip_crafts: &MineralArray<bool>,
     mut max_result: usize,
 ) -> usize {
     if remaining_time == 0 {
         return pack.minerals[goal];
     }
 
-    let upperbound =
-        pack.minerals[goal] + remaining_time * (pack.robots[goal] + (remaining_time - 1) / 2);
+    let upperbound = pack.minerals[goal]
+        + remaining_time * pack.robots[goal]
+        + remaining_time * (remaining_time - 1) / 2;
 
     if upperbound < max_result {
         return 0;
@@ -125,10 +118,10 @@ fn max_mineral(
         max_result = max_result.max(max_mineral(
             goal,
             blueprint,
-            pack,
-            remaining_time - 1,
-            &MineralArray::default(),
             max_robots_needed,
+            remaining_time - 1,
+            pack,
+            &MineralArray::default(),
             max_result,
         ))
     }
@@ -136,10 +129,10 @@ fn max_mineral(
     let max_result = max_result.max(max_mineral(
         goal,
         blueprint,
-        pack,
-        remaining_time - 1,
-        &available_crafts,
         max_robots_needed,
+        remaining_time - 1,
+        pack,
+        &available_crafts,
         max_result,
     ));
 

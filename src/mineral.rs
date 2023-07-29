@@ -1,5 +1,4 @@
 use std::ops::{Index, IndexMut};
-
 use strum::EnumCount;
 use strum_macros::{EnumCount, EnumIter, EnumString};
 
